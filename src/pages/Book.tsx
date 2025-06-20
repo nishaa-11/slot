@@ -770,6 +770,7 @@ const Book = () => {
                       <SelectContent>
                         {[
                           { value: "2", label: "2 minutes" },
+                          { value: "5", label: "5 minutes" },
                           { value: "30", label: "30 minutes" },
                           { value: "60", label: "1 hour" },
                           { value: "90", label: "1.5 hours" },
