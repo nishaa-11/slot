@@ -73,6 +73,7 @@ const Book = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [areas, setAreas] = useState<Area[]>([]);
+  const [loadingAreas, setLoadingAreas] = useState(true);
   const [slots, setSlots] = useState<ParkingSlot[]>([]);
   const [selectedArea, setSelectedArea] = useState<string>("");
   const [selectedSlot, setSelectedSlot] = useState<string>("");
@@ -102,21 +103,26 @@ const Book = () => {
   useEffect(() => {
     const fetchAreas = async () => {
       try {
+        setLoadingAreas(true);
         const { data, error } = await supabase.from("areas").select("*");
         if (error) {
           console.error("Error fetching areas:", error);
+          toast.error("Failed to load parking areas");
           throw error;
         }
         if (data) {
           setAreas(data);
-          console.log("Areas loaded:", data.length);
+          console.log("Areas loaded:", data.length, data);
         } else {
           console.log("No areas found");
           setAreas([]);
+          toast.error("No parking areas available");
         }
       } catch (error) {
         console.error("Error fetching areas:", error);
         toast.error("Failed to load areas");
+      } finally {
+        setLoadingAreas(false);
       }
     };
 
@@ -326,11 +332,11 @@ const Book = () => {
         throw bookingError;
       }
       
-      // Update slot status
-      console.log("Updating slot status");
+      // Update slot status to occupied when booking is created
+      console.log("Updating slot status to occupied");
       const { error: slotError } = await supabase
         .from("parking_slots")
-        .update({ status: "booked" })
+        .update({ status: "occupied" })
         .eq("slot_id", selectedSlot);
       
       if (slotError) {
@@ -540,24 +546,36 @@ const Book = () => {
                 <Label htmlFor="area" className="text-lg">Select Parking Area</Label>
               </div>
               <p className="text-sm text-muted-foreground">Choose the parking area where you want to park your vehicle</p>
-              <Select 
-                value={selectedArea} 
-                onValueChange={value => {
-                  setSelectedArea(value);
-                  setSelectedSlot("");
-                }}
-              >
-                <SelectTrigger className="w-full h-12">
-                  <SelectValue placeholder="Select an area" />
-                </SelectTrigger>
-                <SelectContent>
-                  {areas.map((area) => (
-                    <SelectItem key={area.area_id} value={area.area_id}>
-                      {area.area_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              
+              {loadingAreas ? (
+                <div className="flex items-center justify-center h-12 bg-muted/30 rounded-md border border-border/50">
+                  <Loader2 className="h-5 w-5 text-primary animate-spin mr-2" />
+                  <span className="text-sm text-muted-foreground">Loading parking areas...</span>
+                </div>
+              ) : areas.length === 0 ? (
+                <div className="flex items-center justify-center h-12 bg-red-500/10 rounded-md border border-red-500/30">
+                  <span className="text-sm text-red-500">No parking areas available</span>
+                </div>
+              ) : (
+                <Select 
+                  value={selectedArea} 
+                  onValueChange={value => {
+                    setSelectedArea(value);
+                    setSelectedSlot("");
+                  }}
+                >
+                  <SelectTrigger className="w-full h-12 border-border/50">
+                    <SelectValue placeholder="Select an area" />
+                  </SelectTrigger>
+                  <SelectContent className="z-50">
+                    {areas.map((area) => (
+                      <SelectItem key={area.area_id} value={area.area_id}>
+                        {area.area_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             <motion.div 

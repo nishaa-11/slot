@@ -176,49 +176,13 @@ const Bookings = () => {
     try {
       setIsCancelling(true);
       
-      // Get the booking details from the bookings table
-      const { data: bookingData, error: bookingError } = await supabase
+      // Update booking status to cancelled
+      const { error: bookingError } = await supabase
         .from("bookings")
-        .select("*, vehicles(customer_name, contact_number), parking_slots(area_id)")
-        .eq("booking_id", bookingToCancel.booking_id)
-        .single();
+        .update({ status: "cancelled" })
+        .eq("booking_id", bookingToCancel.booking_id);
       
       if (bookingError) throw bookingError;
-      
-      if (!bookingData) {
-        throw new Error("Booking not found");
-      }
-      
-      // Get the area name
-      const { data: areaData, error: areaError } = await supabase
-        .from("areas")
-        .select("area_name")
-        .eq("area_id", bookingData.parking_slots?.area_id)
-        .single();
-      
-      if (areaError) throw areaError;
-      
-      // Create entry in past_booking table
-      const { error: pastError } = await supabase
-        .from("past_booking")
-        .insert([
-          {
-            booking_id: bookingToCancel.booking_id,
-            vehicle_number: bookingToCancel.vehicle_number,
-            slot_id: bookingToCancel.slot_id,
-            area_name: areaData?.area_name || "Unknown",
-            entry_time: bookingToCancel.entry_time,
-            exit_time: bookingToCancel.exit_time,
-            status: "cancelled",
-            amount_paid: bookingToCancel.amount_paid,
-            payment_status: bookingToCancel.payment_status,
-            customer_name: bookingData.vehicles?.customer_name || "Unknown",
-            contact_number: bookingData.vehicles?.contact_number || "Unknown",
-            cancelled_at: new Date().toISOString(),
-          }
-        ]);
-      
-      if (pastError) throw pastError;
       
       // Update the parking slot to available
       const { error: slotError } = await supabase
@@ -227,14 +191,6 @@ const Bookings = () => {
         .eq("slot_id", bookingToCancel.slot_id);
       
       if (slotError) throw slotError;
-      
-      // Delete the booking from bookings table
-      const { error: deleteError } = await supabase
-        .from("bookings")
-        .delete()
-        .eq("booking_id", bookingToCancel.booking_id);
-      
-      if (deleteError) throw deleteError;
       
       toast.success("Booking cancelled successfully");
       setCancelDialogOpen(false);
